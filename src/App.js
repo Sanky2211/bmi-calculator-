@@ -1,82 +1,93 @@
-import React, { useState } from "react";
-import './components/styles.css';
-import TextInput from "./components/TextInput";
-import Button from "./components/Button";
-
+import React, { useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
+import "materialize-css/dist/css/materialize.min.css";
+import "./App.css";
+import BmiForm from "./components/Form";
+import Info from "./components/Info";
+import { getData, storeData } from "./helpers/localStorage";
 
 const App = () => {
-  const [weight, setWeight] = useState();
-  const [height, setHeight] = useState();
-  const [bmi, setBmi] = useState();
-  const [bmiClass, setBmiClass] = useState();
+  const initialState = () => getData("data") || [];
+  const [state, setState] = useState(initialState);
+  const [data, setData] = useState({});
 
-  const handleHeightChange = (event) => setHeight(event.target.value);
-  const handleWeightChange = (event) => setWeight(event.target.value);
+  useEffect(() => {
+    storeData("data", state);
+    const date = state.map((obj) => obj.date);
+    const bmi = state.map((obj) => obj.bmi);
+    let newData = { date, bmi };
+    setData(newData);
+  }, [state]);
 
-  const computeBmi = () => {
-    let bmiValue = (weight / (height / 100) ** 2).toFixed(2);
-    setBmi(bmiValue);
-    let bmiClass = getBmi(bmiValue);
-    setBmiClass(bmiClass);
-    setHeight("")
-    setWeight("")
+  const handleChange = (val) => {
+    let heightInM = val.height / 100;
+    val.bmi = (val.weight / (heightInM * heightInM)).toFixed(2);
+    val.id = uuidv4();
+    let newVal = [...state, val];
+    let len = newVal.length;
+    if (len > 7) newVal = newVal.slice(1, len);
+    setState(newVal);
   };
 
-  const getBmi = (bmi) => {
+  const handleDelete = (id) => {
+    storeData("lastState", state);
+    let newState = state.filter((i) => {
+      return i.id !== id;
+    });
+    setState(newState);
+  };
 
-    if (bmi < 18.5) {
-      return "Underweight";
-    }
-    if (bmi >= 18.5 && bmi < 24.9) {
-      return "Normal weight";
-    }
-    if (bmi >= 25 && bmi < 29.9) {
-      return "Overweight";
-    }
-    if (bmi >= 30) {
-      return "Obesity";
-    }
+  const handleUndo = () => {
+    setState(getData("lastState"));
   };
 
   return (
-    <div className="App">
-      <div className="container">
-        <h2>Welcome to my BMI Calculator!</h2>
-
-      <div className="row">
-        <TextInput
-          label="Height "
-          placeholder="Enter height in cm"
-          handleChange={handleHeightChange}
-          value={height}
-        />
+    <div className="container">
+      <div className="row center">
+        <h1 className="white-text"> BMI Tracker </h1>
       </div>
       <div className="row">
-        <TextInput
-          label="Weight "
-          placeholder="Enter weight in kg"
-          handleChange={handleWeightChange}
-          value={weight}
-        />
-
+        <div className="col m12 s12">
+          <BmiForm change={handleChange} />
+          <div>
+            <div className="row center">
+              <h4 className="white-text">7 Day Data</h4>
+            </div>
+            {<div className="data-container row">
+              {state.length > 0 ? (
+                <>
+                  {state.map((info) => (
+                    <Info
+                      key={info.id}
+                      id={info.id}
+                      weight={info.weight}
+                      height={info.height}
+                      date={info.date}
+                      bmi={info.bmi}
+                      deleteCard={handleDelete}
+                    />
+                  ))}
+                </>
+              ) : (
+                <div className="center white-text">No log found</div>
+              )}
+            </div> }
+          </div>
+          {getData("lastState") !== null ? (
+            <div className="center">
+              <button className="calculate-btn" onClick={handleUndo}>
+                Undo
+              </button>
+            </div>
+          ) : (
+            ""
+          )}
+        </div>
       </div>
-      <div className="row">
-        <Button label="CALCULATE" onClick={computeBmi} />
-      </div>
-      <div className="row">
-        {
-          isNaN(bmi) ? null : <h3>Your BMI = {bmi}</h3>
-        }
-
-      </div>
-      <div className="row">
-        <h3>{bmiClass}</h3>
-      </div>
-    </div>
-    <div class="attribution">
+      <div class="attribution">
        Coded by Sankalp Vipradas.
     </div>
-  </div> 
+    </div>
   );
 };
 
